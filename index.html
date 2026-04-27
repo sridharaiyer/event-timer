@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meeting Timer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+        }
+
+        .container {
+            position: relative;
+            width: 100%;
+            max-width: 1400px;
+        }
+
+        .background-image {
+            width: 100%;
+            display: block;
+        }
+
+        .timer-overlay {
+            position: absolute;
+            /* Position over the dark center area of the image */
+            top: 42%;
+            left: 50%;
+            transform: translate(-50%, 0);
+            text-align: center;
+            pointer-events: none;
+        }
+
+        .timer-display {
+            font-size: clamp(3rem, 8vw, 8rem);
+            font-weight: 700;
+            color: #ffffff;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0.05em;
+            text-shadow: 0 0 20px rgba(0, 200, 255, 0.5), 0 0 40px rgba(0, 200, 255, 0.2);
+        }
+
+        .timer-display.expired {
+            color: #ff4444;
+            text-shadow: 0 0 20px rgba(255, 68, 68, 0.5), 0 0 40px rgba(255, 68, 68, 0.2);
+            animation: pulse 1s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Settings panel */
+        .settings-toggle {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid rgba(0, 200, 255, 0.4);
+            color: #fff;
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            z-index: 100;
+            transition: background 0.2s;
+        }
+
+        .settings-toggle:hover {
+            background: rgba(0, 200, 255, 0.2);
+        }
+
+        .settings-panel {
+            position: fixed;
+            top: 60px;
+            right: 16px;
+            background: rgba(10, 10, 30, 0.95);
+            border: 1px solid rgba(0, 200, 255, 0.3);
+            border-radius: 12px;
+            padding: 24px;
+            z-index: 100;
+            display: none;
+            min-width: 280px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        .settings-panel.open {
+            display: block;
+        }
+
+        .settings-panel h3 {
+            color: #00c8ff;
+            margin-bottom: 16px;
+            font-size: 16px;
+        }
+
+        .setting-group {
+            margin-bottom: 16px;
+        }
+
+        .setting-group label {
+            display: block;
+            color: #aaa;
+            font-size: 13px;
+            margin-bottom: 6px;
+        }
+
+        .time-inputs {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .time-inputs input {
+            width: 70px;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            color: #fff;
+            font-size: 18px;
+            text-align: center;
+        }
+
+        .time-inputs input:focus {
+            outline: none;
+            border-color: #00c8ff;
+        }
+
+        .time-inputs span {
+            color: #fff;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: 1px solid rgba(0, 200, 255, 0.4);
+            background: rgba(0, 200, 255, 0.1);
+            color: #fff;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background: rgba(0, 200, 255, 0.3);
+        }
+
+        .btn.primary {
+            background: rgba(0, 200, 255, 0.3);
+            border-color: #00c8ff;
+        }
+
+        .btn.danger {
+            border-color: rgba(255, 68, 68, 0.4);
+            background: rgba(255, 68, 68, 0.1);
+        }
+
+        .btn.danger:hover {
+            background: rgba(255, 68, 68, 0.3);
+        }
+
+        /* Music controls */
+        .music-section {
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 16px;
+        }
+
+        .music-section select {
+            width: 100%;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            color: #fff;
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+
+        .music-section select option {
+            background: #1a1a2e;
+        }
+
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .volume-control label {
+            color: #aaa;
+            font-size: 12px;
+            min-width: 50px;
+        }
+
+        .volume-control input[type="range"] {
+            flex: 1;
+            accent-color: #00c8ff;
+        }
+
+        /* Preset buttons */
+        .presets {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        .preset-btn {
+            padding: 5px 10px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .preset-btn:hover {
+            background: rgba(0, 200, 255, 0.15);
+            border-color: rgba(0, 200, 255, 0.3);
+        }
+
+        /* Fullscreen button */
+        .fullscreen-btn {
+            position: fixed;
+            top: 16px;
+            right: 130px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid rgba(0, 200, 255, 0.4);
+            color: #fff;
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            z-index: 100;
+            transition: background 0.2s;
+        }
+
+        .fullscreen-btn:hover {
+            background: rgba(0, 200, 255, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <img src="TEAM_EVAL_RULES_2.png" alt="Meeting Etiquette" class="background-image">
+        <div class="timer-overlay">
+            <div class="timer-display" id="timerDisplay">15:00</div>
+        </div>
+    </div>
+
+    <button class="fullscreen-btn" id="fullscreenBtn" title="Toggle Fullscreen">&#x26F6; Fullscreen</button>
+
+    <button class="settings-toggle" id="settingsToggle">&#x2699; Settings</button>
+
+    <div class="settings-panel" id="settingsPanel">
+        <h3>Timer Settings</h3>
+
+        <div class="setting-group">
+            <label>Presets</label>
+            <div class="presets">
+                <button class="preset-btn" data-minutes="1">1 min</button>
+                <button class="preset-btn" data-minutes="2">2 min</button>
+                <button class="preset-btn" data-minutes="3">3 min</button>
+                <button class="preset-btn" data-minutes="5">5 min</button>
+                <button class="preset-btn" data-minutes="10">10 min</button>
+                <button class="preset-btn" data-minutes="15">15 min</button>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <label>Custom Duration</label>
+            <div class="time-inputs">
+                <input type="number" id="inputMinutes" min="0" max="99" value="15" placeholder="MM">
+                <span>:</span>
+                <input type="number" id="inputSeconds" min="0" max="59" value="0" placeholder="SS">
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <div class="btn-row">
+                <button class="btn primary" id="btnStart">&#x25B6; Start</button>
+                <button class="btn" id="btnPause">&#x23F8; Pause</button>
+                <button class="btn danger" id="btnReset">&#x21BA; Reset</button>
+            </div>
+        </div>
+
+        <div class="setting-group music-section">
+            <label>Background Music</label>
+            <select id="musicSelect">
+                <option value="">-- None --</option>
+                <option value="tracks/background_music_01.mp3">Track 1</option>
+                <option value="tracks/background_music_02.mp3">Track 2</option>
+                <option value="tracks/background_music_03.mp3">Track 3</option>
+                <option value="tracks/background_music_04.mp3">Track 4</option>
+                <option value="tracks/background_music_05.mp3">Track 5</option>
+                <option value="tracks/background_music_06.mp3">Track 6</option>
+                <option value="tracks/background_music_07.mp3">Track 7</option>
+                <option value="tracks/background_music_08.mp3">Track 8</option>
+                <option value="tracks/background_music_09.mp3">Track 9</option>
+                <option value="tracks/background_music_10.mp3">Track 10</option>
+                <option value="tracks/background_music_11.mp3">Track 11</option>
+            </select>
+            <div class="btn-row">
+                <button class="btn" id="btnPlayMusic">&#x266B; Play</button>
+                <button class="btn" id="btnStopMusic">&#x25A0; Stop</button>
+            </div>
+            <div class="volume-control">
+                <label>Volume</label>
+                <input type="range" id="volumeSlider" min="0" max="100" value="30">
+            </div>
+        </div>
+    </div>
+
+    <audio id="bgMusic"></audio>
+
+    <script>
+        const timerDisplay = document.getElementById('timerDisplay');
+        const inputMinutes = document.getElementById('inputMinutes');
+        const inputSeconds = document.getElementById('inputSeconds');
+        const settingsToggle = document.getElementById('settingsToggle');
+        const settingsPanel = document.getElementById('settingsPanel');
+        const btnStart = document.getElementById('btnStart');
+        const btnPause = document.getElementById('btnPause');
+        const btnReset = document.getElementById('btnReset');
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
+        const musicSelect = document.getElementById('musicSelect');
+        const btnPlayMusic = document.getElementById('btnPlayMusic');
+        const btnStopMusic = document.getElementById('btnStopMusic');
+        const volumeSlider = document.getElementById('volumeSlider');
+        const bgMusic = document.getElementById('bgMusic');
+
+        let totalSeconds = 900; // default 15 minutes
+        let remainingSeconds = 900;
+
+        const trackFiles = [
+            'tracks/background_music_01.mp3',
+            'tracks/background_music_02.mp3',
+            'tracks/background_music_03.mp3',
+            'tracks/background_music_04.mp3',
+            'tracks/background_music_05.mp3',
+            'tracks/background_music_06.mp3',
+            'tracks/background_music_07.mp3',
+            'tracks/background_music_08.mp3',
+            'tracks/background_music_09.mp3',
+            'tracks/background_music_10.mp3',
+            'tracks/background_music_11.mp3'
+        ];
+        let timerInterval = null;
+        let isRunning = false;
+
+        // Parse URL params for customization: ?m=5&s=0&autostart=1&track=3
+        function loadFromURL() {
+            const params = new URLSearchParams(window.location.search);
+            const m = parseInt(params.get('m'));
+            const s = parseInt(params.get('s'));
+            if (!isNaN(m)) inputMinutes.value = m;
+            if (!isNaN(s)) inputSeconds.value = s;
+            if (!isNaN(m) || !isNaN(s)) {
+                totalSeconds = ((!isNaN(m) ? m : 0) * 60) + (!isNaN(s) ? s : 0);
+                remainingSeconds = totalSeconds;
+                updateDisplay();
+            }
+            const track = params.get('track');
+            if (track) {
+                const trackNum = track.padStart(2, '0');
+                musicSelect.value = 'tracks/background_music_' + trackNum + '.mp3';
+            }
+            if (params.get('autostart') === '1') {
+                startTimer();
+                if (musicSelect.value) {
+                    playMusic();
+                }
+            }
+        }
+
+        function updateDisplay() {
+            const mins = Math.floor(Math.abs(remainingSeconds) / 60);
+            const secs = Math.abs(remainingSeconds) % 60;
+            const display = String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+            timerDisplay.textContent = remainingSeconds < 0 ? '-' + display : display;
+
+            if (remainingSeconds <= 0) {
+                timerDisplay.classList.add('expired');
+            } else {
+                timerDisplay.classList.remove('expired');
+            }
+        }
+
+        function startTimer() {
+            if (isRunning) return;
+            isRunning = true;
+            btnStart.textContent = '\u25B6 Running';
+            timerInterval = setInterval(function () {
+                remainingSeconds--;
+                updateDisplay();
+            }, 1000);
+        }
+
+        function pauseTimer() {
+            isRunning = false;
+            clearInterval(timerInterval);
+            btnStart.textContent = '\u25B6 Start';
+        }
+
+        function resetTimer() {
+            pauseTimer();
+            const m = parseInt(inputMinutes.value) || 0;
+            const s = parseInt(inputSeconds.value) || 0;
+            totalSeconds = m * 60 + s;
+            remainingSeconds = totalSeconds;
+            updateDisplay();
+        }
+
+        function setPreset(minutes) {
+            inputMinutes.value = minutes;
+            inputSeconds.value = 0;
+            resetTimer();
+        }
+
+        function playRandomTrack() {
+            const idx = Math.floor(Math.random() * trackFiles.length);
+            const src = trackFiles[idx];
+            musicSelect.value = src;
+            bgMusic.src = src;
+            bgMusic.volume = volumeSlider.value / 100;
+            bgMusic.play();
+        }
+
+        function playMusic() {
+            const src = musicSelect.value;
+            if (!src) return;
+            bgMusic.src = src;
+            bgMusic.volume = volumeSlider.value / 100;
+            bgMusic.play();
+        }
+
+        function stopMusic() {
+            bgMusic.pause();
+            bgMusic.currentTime = 0;
+        }
+
+        // Event listeners
+        settingsToggle.addEventListener('click', function () {
+            settingsPanel.classList.toggle('open');
+        });
+
+        btnStart.addEventListener('click', startTimer);
+        btnPause.addEventListener('click', pauseTimer);
+        btnReset.addEventListener('click', resetTimer);
+
+        document.querySelectorAll('.preset-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                setPreset(parseInt(this.dataset.minutes));
+            });
+        });
+
+        inputMinutes.addEventListener('change', resetTimer);
+        inputSeconds.addEventListener('change', resetTimer);
+
+        btnPlayMusic.addEventListener('click', playMusic);
+        btnStopMusic.addEventListener('click', stopMusic);
+
+        bgMusic.addEventListener('ended', function () {
+            playRandomTrack();
+        });
+
+        volumeSlider.addEventListener('input', function () {
+            bgMusic.volume = this.value / 100;
+        });
+
+        fullscreenBtn.addEventListener('click', function () {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function (e) {
+            if (e.target.tagName === 'INPUT') return;
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (isRunning) {
+                    pauseTimer();
+                    bgMusic.pause();
+                } else {
+                    startTimer();
+                    if (bgMusic.paused) {
+                        if (bgMusic.src && bgMusic.currentTime > 0) {
+                            bgMusic.play();
+                        } else {
+                            playRandomTrack();
+                        }
+                    }
+                }
+            } else if (e.code === 'KeyR') {
+                resetTimer();
+            } else if (e.code === 'KeyF') {
+                fullscreenBtn.click();
+            }
+        });
+
+        // Initialize
+        updateDisplay();
+        loadFromURL();
+    </script>
+</body>
+</html>
