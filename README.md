@@ -17,7 +17,7 @@ event-timer/
 ├── index.html          # Main HTML interface
 ├── tracks/             # Background music library (11 MP3 files)
 ├── README.md           # This file
-└── team_eval_3_no_food.png
+└── team_eval_x.png
 ```
 
 ## Getting Started
